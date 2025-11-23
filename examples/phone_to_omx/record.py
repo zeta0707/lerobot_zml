@@ -54,7 +54,7 @@ HF_REPO_ID = "<hf_username>/<dataset_repo_id>"
 camera_config = {"front": OpenCVCameraConfig(index_or_path=0, width=640, height=480, fps=FPS)}
 robot_config = OmxFollowerConfig(
     port="/dev/ttyACM0",
-    id="omx_follower_phone",
+    id="omx_follower_arm",
     cameras=camera_config,
     use_degrees=True,
 )

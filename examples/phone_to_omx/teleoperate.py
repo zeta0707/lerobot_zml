@@ -39,7 +39,7 @@ FPS = 30
 
 # Initialize the robot and teleoperator
 robot_config = OmxFollowerConfig(
-    port="/dev/ttyACM0", id="omx_follower_phone", use_degrees=True
+    port="/dev/ttyACM0", id="omx_follower_arm", use_degrees=True
 )
 teleop_config = PhoneConfig(phone_os=PhoneOS.ANDROID)  # or PhoneOS.ANDROID
 

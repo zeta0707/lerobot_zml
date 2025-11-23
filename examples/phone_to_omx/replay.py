@@ -37,7 +37,7 @@ HF_REPO_ID = "<hf_username>/<dataset_repo_id>"
 
 # Initialize the robot config
 robot_config = OmxFollowerConfig(
-    port="/dev/ttyACM0", id="omx_follower_phone", use_degrees=True
+    port="/dev/ttyACM0", id="omx_follower_arm", use_degrees=True
 )
 
 # Initialize the robot
