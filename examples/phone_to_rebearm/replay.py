@@ -25,7 +25,7 @@ from lerobot.processor.converters import (
 )
 from lerobot.robots.rebearm_follower.config_rebearm_follower import REBEARMFollowerConfig
 # need to use own robot_kinematic_processor ??
-from lerobot.robots.so100_follower.robot_kinematic_processor import (
+from lerobot.robots.rebearm_follower.robot_kinematic_processor import (
     InverseKinematicsEEToJoints,
 )
 from lerobot.robots.rebearm_follower.rebearm_follower import REBEARMFollower

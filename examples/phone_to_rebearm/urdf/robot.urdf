@@ -34,19 +34,7 @@
   <material name="white">
     <color rgba="1.0 1.0 1.0 0.9"/>
   </material>
-  <!-- Used for fixing robot -->
-  <link name="world"/>
-  <gazebo reference="world">
-    <static>true</static>
-  </gazebo>
-  <!-- World fixed joint-->
-  <joint name="world_fixed" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0"/>
-    <parent link="world"/>
-    <child link="base_link"/>
-  </joint>
-  <!-- arbitrary value for mass -->
-  <!-- Space btw top of beam and the each joint -->
+
   <!-- Base Link -->
   <link name="base_link">
     <collision>
@@ -69,7 +57,7 @@
     </inertial>
   </link>
   <!-- Joint 1, z origin = parent height -->
-  <joint name="joint1" type="revolute">
+  <joint name="shoulder_pan" type="revolute">
     <parent link="base_link"/>
     <child link="link1"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.2"/>
@@ -99,7 +87,7 @@
     </inertial>
   </link>
   <!-- Joint 2, z origin = parent height -->
-  <joint name="joint2" type="revolute">
+  <joint name="shoulder_lift" type="revolute">
     <parent link="link1"/>
     <child link="link2"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.19"/>
@@ -129,7 +117,7 @@
     </inertial>
   </link>
   <!-- Joint 3, z origin = parent height  -->
-  <joint name="joint3" type="revolute">
+  <joint name="elbow_flex" type="revolute">
     <parent link="link2"/>
     <child link="link3"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.44"/>
@@ -159,7 +147,7 @@
     </inertial>
   </link>
   <!-- Joint 4, z origin = parent height  -->
-  <joint name="joint4" type="revolute">
+  <joint name="wrist_flex" type="revolute">
     <origin rpy="0 0 0" xyz="0.0 -0.001 0.56"/>
     <parent link="link3"/>
     <child link="link4"/>
@@ -189,7 +177,7 @@
     </inertial>
   </link>
   <!-- Joint 5, z origin = parent height  -->
-  <joint name="joint5" type="revolute">
+  <joint name="wrist_roll" type="revolute">
     <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.06 0.3"/>
     <parent link="link4"/>
     <child link="link5"/>
@@ -219,16 +207,16 @@
     </inertial>
   </link>
   <!-- Joint 6, z origin = parent height  -->
-  <joint name="joint6" type="revolute">
+  <joint name="gripper" type="revolute">
     <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.07 0.178"/>
     <parent link="link5"/>
-    <child link="link6"/>
+    <child link="gripper_frame_link"/>
     <axis xyz="1 0 0"/>
     <dynamics damping="0.7"/>
     <limit effort="1" lower="-1.6" upper="-1.04" velocity="4.8"/>
   </joint>
   <!-- Link 6, gripper mover -->
-  <link name="link6">
+  <link name="gripper_frame_link">
     <collision>
       <origin rpy="1.5707963267948966 0.0 0.0" xyz="-0.12 0.053 -0.05"/>
       <geometry>
@@ -248,54 +236,5 @@
       <inertia ixx="0.003685416666666667" ixy="0.0" ixz="0.0" iyy="0.003685416666666667" iyz="0.0" izz="0.006666666666666668"/>
     </inertial>
   </link>
-  <ros2_control name="rebearm" type="system">
-    <hardware>
-      <plugin>rebearm_hardware/rebearmSystemPositionOnlyHardware</plugin>
-      <param name="example_param_hw_start_duration_sec">0</param>
-      <param name="example_param_hw_stop_duration_sec">3.0</param>
-      <param name="example_param_hw_slowdown">100</param>
-    </hardware>
-    <joint name="joint1">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-    <joint name="joint2">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-    <joint name="joint3">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-    <joint name="joint4">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-    <joint name="joint5">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-    <joint name="joint6">
-      <command_interface name="position">
-        <param name="min">-1</param>
-        <param name="max">1</param>
-      </command_interface>
-      <state_interface name="position"/>
-    </joint>
-  </ros2_control>
+ 
 </robot>
