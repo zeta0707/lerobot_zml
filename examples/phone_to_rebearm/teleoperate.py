@@ -32,82 +32,90 @@ from lerobot.robots.rebearm_follower.rebearm_follower import REBEARMFollower
 from lerobot.teleoperators.phone.config_phone import PhoneConfig, PhoneOS
 from lerobot.teleoperators.phone.phone_processor import MapPhoneActionToRobotAction
 from lerobot.teleoperators.phone.teleop_phone import Phone
-from lerobot.utils.robot_utils import busy_wait
+from lerobot.utils.robot_utils import precise_sleep
 from lerobot.utils.visualization_utils import init_rerun, log_rerun_data
 
 FPS = 30
 
-# Initialize the robot and teleoperator
-robot_config = REBEARMFollowerConfig(
-    port="/dev/ttyUSB0", id="rebearm_follower_phone", use_degrees=True
-)
-teleop_config = PhoneConfig(phone_os=PhoneOS.ANDROID)  # or PhoneOS.ANDROID
 
-# Initialize the robot and teleoperator
-robot = REBEARMFollower(robot_config)
-teleop_device = Phone(teleop_config)
+def main():
+    # Initialize the robot and teleoperator
+    robot_config = REBEARMFollowerConfig(
+        port="/dev/ttyUSB0", id="rebearm_follower_phone", use_degrees=True
+    )
+    teleop_config = PhoneConfig(phone_os=PhoneOS.ANDROID)  # or PhoneOS.ANDROID
 
-# NOTE: It is highly recommended to use the urdf in the OpenManipulator repo: https://github.com/zeta0707/rebearm/tree/main/rebearm_description/xacro
-kinematics_solver = RobotKinematics(
-    urdf_path="./urdf",
-    target_frame_name="gripper_frame_link",
-    joint_names=list(robot.bus.motors.keys()),
-)
+    # Initialize the robot and teleoperator
+    robot = REBEARMFollower(robot_config)
+    teleop_device = Phone(teleop_config)
 
-# Build pipeline to convert phone action to ee pose action to joint action
-phone_to_robot_joints_processor = RobotProcessorPipeline[tuple[RobotAction, RobotObservation], RobotAction](
-    steps=[
-        MapPhoneActionToRobotAction(platform=teleop_config.phone_os),
-        EEReferenceAndDelta(
-            kinematics=kinematics_solver,
-            end_effector_step_sizes={"x": 0.5, "y": 0.5, "z": 0.5},
-            motor_names=list(robot.bus.motors.keys()),
-            use_latched_reference=True,
-        ),
-        EEBoundsAndSafety(
-            end_effector_bounds={"min": [-1.0, -1.0, -1.0], "max": [1.0, 1.0, 1.0]},
-            max_ee_step_m=0.10,
-        ),
-        GripperVelocityToJoint(
-            speed_factor=20.0,
-        ),
-        InverseKinematicsEEToJoints(
-            kinematics=kinematics_solver,
-            motor_names=list(robot.bus.motors.keys()),
-            initial_guess_current_joints=True,
-        ),
-    ],
-    to_transition=robot_action_observation_to_transition,
-    to_output=transition_to_robot_action,
-)
+    # NOTE: It is highly recommended to use the urdf repo: https://github.com/zeta0707/rebearm/tree/main/rebearm_description/xacro
+    kinematics_solver = RobotKinematics(
+        urdf_path="./urdf",
+        target_frame_name="gripper_frame_link",
+        joint_names=list(robot.bus.motors.keys()),
+    )
 
-# Connect to the robot and teleoperator
-robot.connect()
-teleop_device.connect()
+    # Build pipeline to convert phone action to ee pose action to joint action
+    phone_to_robot_joints_processor = RobotProcessorPipeline[
+        tuple[RobotAction, RobotObservation], RobotAction
+    ](
+        steps=[
+            MapPhoneActionToRobotAction(platform=teleop_config.phone_os),
+            EEReferenceAndDelta(
+                kinematics=kinematics_solver,
+                end_effector_step_sizes={"x": 0.5, "y": 0.5, "z": 0.5},
+                motor_names=list(robot.bus.motors.keys()),
+                use_latched_reference=True,
+            ),
+            EEBoundsAndSafety(
+                end_effector_bounds={"min": [-1.0, -1.0, -1.0], "max": [1.0, 1.0, 1.0]},
+                max_ee_step_m=0.10,
+            ),
+            GripperVelocityToJoint(
+                speed_factor=20.0,
+            ),
+            InverseKinematicsEEToJoints(
+                kinematics=kinematics_solver,
+                motor_names=list(robot.bus.motors.keys()),
+                initial_guess_current_joints=True,
+            ),
+        ],
+        to_transition=robot_action_observation_to_transition,
+        to_output=transition_to_robot_action,
+    )
 
-# Init rerun viewer
-init_rerun(session_name="phone_omx_teleop")
+    # Connect to the robot and teleoperator
+    robot.connect()
+    teleop_device.connect()
 
-if not robot.is_connected or not teleop_device.is_connected:
-    raise ValueError("Robot or teleop is not connected!")
+    # Init rerun viewer
+    init_rerun(session_name="phone_rebearm_teleop")
 
-print("Starting teleop loop. Move your phone to teleoperate the robot...")
-while True:
-    t0 = time.perf_counter()
+    if not robot.is_connected or not teleop_device.is_connected:
+        raise ValueError("Robot or teleop is not connected!")
 
-    # Get robot observation
-    robot_obs = robot.get_observation()
+    print("Starting teleop loop. Move your phone to teleoperate the robot...")
+    while True:
+        t0 = time.perf_counter()
 
-    # Get teleop action
-    phone_obs = teleop_device.get_action()
+        # Get robot observation
+        robot_obs = robot.get_observation()
 
-    # Phone -> EE pose -> Joints transition
-    joint_action = phone_to_robot_joints_processor((phone_obs, robot_obs))
+        # Get teleop action
+        phone_obs = teleop_device.get_action()
 
-    # Send action to robot
-    _ = robot.send_action(joint_action)
+        # Phone -> EE pose -> Joints transition
+        joint_action = phone_to_robot_joints_processor((phone_obs, robot_obs))
 
-    # Visualize
-    log_rerun_data(observation=phone_obs, action=joint_action)
+        # Send action to robot
+        _ = robot.send_action(joint_action)
 
-    busy_wait(max(1.0 / FPS - (time.perf_counter() - t0), 0.0))
+        # Visualize
+        log_rerun_data(observation=phone_obs, action=joint_action)
+
+        precise_sleep(max(1.0 / FPS - (time.perf_counter() - t0), 0.0))
+
+
+if __name__ == "__main__":
+    main()

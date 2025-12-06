@@ -29,72 +29,78 @@ from lerobot.robots.rebearm_follower.robot_kinematic_processor import (
 )
 from lerobot.robots.rebearm_follower.rebearm_follower import REBEARMFollower
 from lerobot.utils.constants import ACTION
-from lerobot.utils.robot_utils import busy_wait
+from lerobot.utils.robot_utils import precise_sleep
 from lerobot.utils.utils import log_say
 
 EPISODE_IDX = 0
 HF_REPO_ID = "<hf_username>/<dataset_repo_id>"
 
-# Initialize the robot config
-robot_config = REBEARMFollowerConfig(
-    port="/dev/ttyUSB0", id="rebearm_follower_phone", use_degrees=True
-)
 
-# Initialize the robot
-robot = REBEARMFollower(robot_config)
+def main():
+    # Initialize the robot config
+    robot_config = REBEARMFollowerConfig(
+        port="/dev/ttyUSB0", id="rebearm_follower_phone", use_degrees=True
+    )
 
-# NOTE: It is highly recommended to use the urdf in the OpenManipulator repo: https://github.com/zeta0707/rebearm/tree/main/rebearm_description/xacro
-kinematics_solver = RobotKinematics(
-    urdf_path="./urdf",
-    target_frame_name="gripper_frame_link",
-    joint_names=list(robot.bus.motors.keys()),
-)
+    # Initialize the robot
+    robot = REBEARMFollower(robot_config)
 
-# Build pipeline to convert EE action to joints action
-robot_ee_to_joints_processor = RobotProcessorPipeline[tuple[RobotAction, RobotObservation], RobotAction](
-    steps=[
-        InverseKinematicsEEToJoints(
-            kinematics=kinematics_solver,
-            motor_names=list(robot.bus.motors.keys()),
-            initial_guess_current_joints=False,  # Because replay is open loop
-        ),
-    ],
-    to_transition=robot_action_observation_to_transition,
-    to_output=transition_to_robot_action,
-)
+    # NOTE: It is highly recommended to use the urdf repo: https://github.com/zeta0707/rebearm/tree/main/rebearm_description/xacro
+    kinematics_solver = RobotKinematics(
+        urdf_path="./urdf",
+        target_frame_name="gripper_frame_link",
+        joint_names=list(robot.bus.motors.keys()),
+    )
 
-# Fetch the dataset to replay
-dataset = LeRobotDataset(HF_REPO_ID, episodes=[EPISODE_IDX])
-# Filter dataset to only include frames from the specified episode since episodes are chunked in dataset V3.0
-episode_frames = dataset.hf_dataset.filter(lambda x: x["episode_index"] == EPISODE_IDX)
-actions = episode_frames.select_columns(ACTION)
+    # Build pipeline to convert EE action to joints action
+    robot_ee_to_joints_processor = RobotProcessorPipeline[tuple[RobotAction, RobotObservation], RobotAction](
+        steps=[
+            InverseKinematicsEEToJoints(
+                kinematics=kinematics_solver,
+                motor_names=list(robot.bus.motors.keys()),
+                initial_guess_current_joints=False,  # Because replay is open loop
+            ),
+        ],
+        to_transition=robot_action_observation_to_transition,
+        to_output=transition_to_robot_action,
+    )
 
-# Connect to the robot
-robot.connect()
+    # Fetch the dataset to replay
+    dataset = LeRobotDataset(HF_REPO_ID, episodes=[EPISODE_IDX])
+    # Filter dataset to only include frames from the specified episode since episodes are chunked in dataset V3.0
+    episode_frames = dataset.hf_dataset.filter(lambda x: x["episode_index"] == EPISODE_IDX)
+    actions = episode_frames.select_columns(ACTION)
 
-if not robot.is_connected:
-    raise ValueError("Robot is not connected!")
+    # Connect to the robot
+    robot.connect()
 
-print("Starting replay loop...")
-log_say(f"Replaying episode {EPISODE_IDX}")
-for idx in range(len(episode_frames)):
-    t0 = time.perf_counter()
+    if not robot.is_connected:
+        raise ValueError("Robot is not connected!")
 
-    # Get recorded action from dataset
-    ee_action = {
-        name: float(actions[idx][ACTION][i]) for i, name in enumerate(dataset.features[ACTION]["names"])
-    }
+    print("Starting replay loop...")
+    log_say(f"Replaying episode {EPISODE_IDX}")
+    for idx in range(len(episode_frames)):
+        t0 = time.perf_counter()
 
-    # Get robot observation
-    robot_obs = robot.get_observation()
+        # Get recorded action from dataset
+        ee_action = {
+            name: float(actions[idx][ACTION][i]) for i, name in enumerate(dataset.features[ACTION]["names"])
+        }
 
-    # Dataset EE -> robot joints
-    joint_action = robot_ee_to_joints_processor((ee_action, robot_obs))
+        # Get robot observation
+        robot_obs = robot.get_observation()
 
-    # Send action to robot
-    _ = robot.send_action(joint_action)
+        # Dataset EE -> robot joints
+        joint_action = robot_ee_to_joints_processor((ee_action, robot_obs))
 
-    busy_wait(1.0 / dataset.fps - (time.perf_counter() - t0))
+        # Send action to robot
+        _ = robot.send_action(joint_action)
 
-# Clean up
-robot.disconnect()
+        precise_sleep(1.0 / dataset.fps - (time.perf_counter() - t0))
+
+    # Clean up
+    robot.disconnect()
+
+
+if __name__ == "__main__":
+    main()
