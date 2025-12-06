@@ -27,7 +27,6 @@ from lerobot.processor.converters import (
     transition_to_robot_action,
 )
 from lerobot.robots.rebearm_follower.config_rebearm_follower import REBEARMFollowerConfig
-# need to use own robot_kinematic_processor ??
 from lerobot.robots.rebearm_follower.robot_kinematic_processor import (
     EEBoundsAndSafety,
     EEReferenceAndDelta,

@@ -32,6 +32,45 @@ from lerobot.processor import (
 )
 from lerobot.utils.rotation import Rotation
 
+def normalize_rad(angle):
+    """
+    Normalize an angle in radians to the range [-π, π].
+    Works with both scalar values and NumPy arrays.
+    
+    Args:
+        angle: Angle in radians (scalar, list, or NumPy array)
+    
+    Returns:
+        Normalized angle in the range [-π, π]
+    """
+    # Convert to numpy array for consistency
+    angle = np.asarray(angle)
+    
+    # Normalize to [-π, π]
+    normalized = (angle + np.pi) % (2 * np.pi) - np.pi
+    
+    # Return scalar if input was scalar
+    return normalized.item() if normalized.ndim == 0 else normalized
+
+def normalize_angle(angle):
+    """
+    Normalize an angle in degrees to the range [-180°, 180°].
+    Works with both scalar values and NumPy arrays.
+    
+    Args:
+        angle: Angle in degrees (scalar, list, or NumPy array)
+    
+    Returns:
+        Normalized angle in the range [-180°, 180°]
+    """
+    # Convert to numpy array for consistency
+    angle = np.asarray(angle)
+    
+    # Normalize to [-180, 180]
+    normalized = (angle + 180) % 360 - 180
+    
+    # Return scalar if input was scalar
+    return normalized.item() if normalized.ndim == 0 else normalized
 
 @ProcessorStepRegistry.register("ee_reference_and_delta")
 @dataclass
@@ -277,7 +316,9 @@ class InverseKinematicsEEToJoints(RobotActionProcessorStep):
         wx = action.pop("ee.wx")
         wy = action.pop("ee.wy")
         wz = action.pop("ee.wz")
-        gripper_pos = action.pop("ee.gripper_pos")
+        #gripper_pos = action.pop("ee.gripper_pos")
+        #temporary
+        gripper_pos = -86.00
 
         if None in (x, y, z, wx, wy, wz, gripper_pos):
             raise ValueError(
@@ -306,9 +347,16 @@ class InverseKinematicsEEToJoints(RobotActionProcessorStep):
         t_des[:3, :3] = Rotation.from_rotvec([wx, wy, wz]).as_matrix()
         t_des[:3, 3] = [x, y, z]
 
+        print(f"Curr: {np.array2string(self.q_curr, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
+        #Before calling inverse_kinematics
+        #print(f"  Position: {t_des[:3, 3]}")  # Translation part
+        #print(f"  Rotation: {t_des[:3, :3]}")  # Rotation part
+
         # Compute inverse kinematics
         q_target = self.kinematics.inverse_kinematics(self.q_curr, t_des)
+        q_target = normalize_angle(q_target)
         self.q_curr = q_target
+        print(f"Targ: {np.array2string(q_target, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
 
         # TODO: This is sentitive to order of motor_names = q_target mapping
         for i, name in enumerate(self.motor_names):
