@@ -345,7 +345,7 @@ class InverseKinematicsEEToJoints(RobotActionProcessorStep):
         t_des[:3, :3] = Rotation.from_rotvec([wx, wy, wz]).as_matrix()
         t_des[:3, 3] = [x, y, z]
 
-        print(f"Curr: {np.array2string(self.q_curr, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
+        #print(f"Curr: {np.array2string(self.q_curr, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
         #Before calling inverse_kinematics
         #print(f"  Position: {t_des[:3, 3]}")  # Translation part
         #print(f"  Rotation: {t_des[:3, :3]}")  # Rotation part
@@ -354,7 +354,7 @@ class InverseKinematicsEEToJoints(RobotActionProcessorStep):
         q_target = self.kinematics.inverse_kinematics(self.q_curr, t_des)
         q_target = normalize_angle(q_target)
         self.q_curr = q_target
-        print(f"Targ: {np.array2string(q_target, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
+        #print(f"Targ: {np.array2string(q_target, formatter={'float_kind':lambda x: f'{x:7.2f}'})}")
 
         # TODO: This is sentitive to order of motor_names = q_target mapping
         for i, name in enumerate(self.motor_names):

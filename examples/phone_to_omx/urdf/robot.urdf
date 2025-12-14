@@ -8,7 +8,7 @@
 <robot name="omx_f">
 
   <joint name="end_effector_joint" type="fixed">
-    <parent link="link5"/>
+    <parent link="gripper_link"/>
     <child link="gripper_frame_link"/>
     <origin rpy="0 0 0" xyz="0.09193 -0.0016 0"/>
   </joint>
@@ -24,7 +24,23 @@
     </visual>
   </link>
 
-  <link name="link0">
+  <!-- Lower arm frame (dummy link + fixed joint) -->
+  <link name="lower_arm_frame_link">
+    <origin xyz="0 0 0" rpy="0 -0 0"/>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1e-9"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+  </link>
+  <joint name="lower_arm_frame_joint" type="fixed">
+    <origin xyz="-0.1349 0.0052 0.015" rpy="1.5708 0 -1.5708"/>
+    <parent link="lower_arm_link"/>
+    <child link="lower_arm_frame_link"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -50,14 +66,15 @@
     </inertial>
   </link>
   <joint name="shoulder_pan" type="revolute">
-    <parent link="link0"/>
-    <child link="link1"/>
+    <parent link="base_link"/>
+    <child link="shoulder_link"/>
     <origin rpy="0 0 0" xyz="-0.01125 0 0.034"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.05"/>
   </joint>
-  <link name="link1">
+
+  <link name="shoulder_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -83,14 +100,15 @@
     </inertial>
   </link>
   <joint name="shoulder_lift" type="revolute">
-    <parent link="link1"/>
-    <child link="link2"/>
+    <parent link="shoulder_link"/>
+    <child link="upper_arm_link"/>
     <origin rpy="0 0 0" xyz="0 0 0.0635"/>
     <axis xyz="0 1 0"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
   </joint>
-  <link name="link2">
+
+  <link name="upper_arm_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -116,14 +134,15 @@
     </inertial>
   </link>
   <joint name="elbow_flex" type="revolute">
-    <parent link="link2"/>
-    <child link="link3"/>
+    <parent link="upper_arm_link"/>
+    <child link="lower_arm_link"/>
     <origin rpy="0 0 0" xyz="0.0415 0 0.11315"/>
     <axis xyz="0 1 0"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
   </joint>
-  <link name="link3">
+
+  <link name="lower_arm_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -149,14 +168,15 @@
     </inertial>
   </link>
   <joint name="wrist_flex" type="revolute">
-    <parent link="link3"/>
-    <child link="link4"/>
+    <parent link="lower_arm_link"/>
+    <child link="wrist_link"/>
     <origin rpy="0 0 0" xyz="0.162 0 0"/>
     <axis xyz="0 1 0"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
   </joint>
-  <link name="link4">
+
+  <link name="wrist_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -182,14 +202,15 @@
     </inertial>
   </link>
   <joint name="wrist_roll" type="revolute">
-    <parent link="link4"/>
-    <child link="link5"/>
+    <parent link="wrist_link"/>
+    <child link="gripper_link"/>
     <origin rpy="0 0 0" xyz="0.0287 0 0"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
   </joint>
-  <link name="link5">
+
+  <link name="gripper_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -215,14 +236,15 @@
     </inertial>
   </link>
   <joint name="gripper" type="revolute">
-    <parent link="link5"/>
-    <child link="link6"/>
+    <parent link="gripper_link"/>
+    <child link="gripper_motor_link"/>
     <origin rpy="0 0 0" xyz="0.0295 0.0075 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
   </joint>
-  <link name="link6">
+
+  <link name="gripper_motor_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -247,16 +269,17 @@
       <inertia ixx="2.708328700e-06" ixy="1.397245300e-07" ixz="5.888794300e-08" iyy="6.873372800e-06" iyz="1.537070800e-08" izz="4.694188100e-06"/>
     </inertial>
   </link>
-  <joint name="gripper_joint_2" type="revolute">
-    <parent link="link5"/>
-    <child link="link7"/>
+  <joint name="gripper_joint_1" type="revolute">
+    <parent link="gripper_link"/>
+    <child link="gripper_gear_link"/>
     <origin rpy="0 0 0" xyz="0.0295 -0.0108 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8"/>
     <dynamics damping="0.1"/>
     <mimic joint="gripper_joint_1" multiplier="-1"/>
   </joint>
-  <link name="link7">
+
+  <link name="gripper_gear_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
