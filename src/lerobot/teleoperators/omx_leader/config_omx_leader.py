@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,4 +27,4 @@ class OmxLeaderConfig(TeleoperatorConfig):
 
     # Sets the arm in torque mode with the gripper motor set to this value. This makes it possible to squeeze
     # the gripper and have it spring back to an open position on its own.
-    gripper_open_pos: float = 60.0 
+    gripper_open_pos: float = 37.0

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2025 The HuggingFace Inc. team. All rights reserved.
+# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ from typing import Any
 from lerobot.cameras.utils import make_cameras_from_configs
 from lerobot.motors import Motor, MotorCalibration, MotorNormMode
 from lerobot.motors.dynamixel import (
+    DriveMode,
     DynamixelMotorsBus,
     OperatingMode,
 )
@@ -36,33 +37,29 @@ logger = logging.getLogger(__name__)
 
 class OmxFollower(Robot):
     """
-    OMX Robot
+    - [OMX](https://github.com/ROBOTIS-GIT/open_manipulator),
+        expansion, developed by Woojin Wie and Junha Cha from [ROBOTIS](https://ai.robotis.com/)
     """
 
     config_class = OmxFollowerConfig
     name = "omx_follower"
 
     def __init__(self, config: OmxFollowerConfig):
-        # Set default calibration directory to source code
-        if not config.calibration_dir:
-            from pathlib import Path
-            config.calibration_dir = Path(__file__).parent / "calibration"
-
         super().__init__(config)
         self.config = config
+        norm_mode_body = MotorNormMode.DEGREES if config.use_degrees else MotorNormMode.RANGE_M100_100
         self.bus = DynamixelMotorsBus(
             port=self.config.port,
             motors={
-                "shoulder_pan": Motor(11, "xl430-w250", MotorNormMode.DEGREES),
-                "shoulder_lift": Motor(12, "xl430-w250", MotorNormMode.RANGE_M100_100),
-                "elbow_flex": Motor(13, "xl430-w250", MotorNormMode.RANGE_M100_100),
-                "wrist_flex": Motor(14, "xl330-m288", MotorNormMode.RANGE_M100_100),
-                "wrist_roll": Motor(15, "xl330-m288", MotorNormMode.DEGREES),
+                "shoulder_pan": Motor(11, "xl430-w250", norm_mode_body),
+                "shoulder_lift": Motor(12, "xl430-w250", norm_mode_body),
+                "elbow_flex": Motor(13, "xl430-w250", norm_mode_body),
+                "wrist_flex": Motor(14, "xl330-m288", norm_mode_body),
+                "wrist_roll": Motor(15, "xl330-m288", norm_mode_body),
                 "gripper": Motor(16, "xl330-m288", MotorNormMode.RANGE_0_100),
             },
             calibration=self.calibration,
         )
-        self.bus.apply_drive_mode = False
         self.cameras = make_cameras_from_configs(config.cameras)
 
     @property
@@ -89,20 +86,16 @@ class OmxFollower(Robot):
 
     def connect(self, calibrate: bool = True) -> None:
         """
-        We assume that at connection time, arm is in a rest position,
-        and torque can be safely disabled to run calibration.
+        For OMX robots that come pre-calibrated:
+        - If default calibration from package doesn't match motors, read from motors and save
+        - This allows using pre-calibrated robots without manual calibration
+        - If no calibration file exists, use factory default values (homing_offset=0, range_min=0, range_max=4095)
         """
         if self.is_connected:
             raise DeviceAlreadyConnectedError(f"{self} already connected")
 
         self.bus.connect()
-        # Skip calibration and use pre-configured calibration file
-        if self.calibration:
-            logger.info(f"Using pre-configured calibration for {self}")
-            # Ensure EEPROM writes are permitted
-            self.bus.disable_torque()
-            self.bus.write_calibration(self.calibration)
-        elif not self.is_calibrated and calibrate:
+        if not self.is_calibrated and calibrate:
             logger.info(
                 "Mismatch between calibration values in the motor and the calibration file or no calibration file found"
             )
@@ -119,44 +112,23 @@ class OmxFollower(Robot):
         return self.bus.is_calibrated
 
     def calibrate(self) -> None:
-        if self.calibration:
-            # Calibration file exists, ask user whether to use it or run new calibration
-            user_input = input(
-                f"Press ENTER to use provided calibration file associated with the id {self.id}, or type 'c' and press ENTER to run calibration: "
-            )
-            if user_input.strip().lower() != "c":
-                logger.info(f"Writing calibration file associated with the id {self.id} to the motors")
-                self.bus.write_calibration(self.calibration)
-                return
-        logger.info(f"\nRunning calibration of {self}")
         self.bus.disable_torque()
+        logger.info(f"\nUsing factory default calibration values for {self}")
+        logger.info(f"\nWriting default configuration of {self} to the motors")
         for motor in self.bus.motors:
             self.bus.write("Operating_Mode", motor, OperatingMode.EXTENDED_POSITION.value)
 
-        input(f"Move {self} to the middle of its range of motion and press ENTER....")
-        homing_offsets = self.bus.set_half_turn_homings()
-
-        full_turn_motors = ["shoulder_pan", "wrist_roll"]
-        unknown_range_motors = [motor for motor in self.bus.motors if motor not in full_turn_motors]
-        print(
-            f"Move all joints except {full_turn_motors} sequentially through their entire "
-            "ranges of motion.\nRecording positions. Press ENTER to stop..."
-        )
-        range_mins, range_maxes = self.bus.record_ranges_of_motion(unknown_range_motors)
-        for motor in full_turn_motors:
-            range_mins[motor] = 0
-            range_maxes[motor] = 4095
+        for motor in self.bus.motors:
+            self.bus.write("Drive_Mode", motor, DriveMode.NON_INVERTED.value)
 
         self.calibration = {}
         for motor, m in self.bus.motors.items():
-            # Set drive_mode=1 for elbow_flex to fix direction
-            drive_mode = 1 if motor == "elbow_flex" else 0
             self.calibration[motor] = MotorCalibration(
                 id=m.id,
-                drive_mode=drive_mode,
-                homing_offset=homing_offsets[motor],
-                range_min=range_mins[motor],
-                range_max=range_maxes[motor],
+                drive_mode=0,
+                homing_offset=0,
+                range_min=0,
+                range_max=4095,
             )
 
         self.bus.write_calibration(self.calibration)
@@ -165,47 +137,27 @@ class OmxFollower(Robot):
 
     def configure(self) -> None:
         with self.bus.torque_disabled():
-            # First set operating modes per joint (EEPROM area requires torque disabled)
-            # dxl11 shoulder_pan -> 4 (EXTENDED_POSITION)
-            self.bus.write("Operating_Mode", "shoulder_pan", 4, normalize=False)
-            # dxl12 shoulder_lift -> 3 (POSITION)
-            self.bus.write("Operating_Mode", "shoulder_lift", 3, normalize=False)
-            # dxl13 elbow_flex -> 3 (POSITION)
-            self.bus.write("Operating_Mode", "elbow_flex", 3, normalize=False)
-            # dxl14 wrist_flex -> 3 (POSITION)
-            self.bus.write("Operating_Mode", "wrist_flex", 3, normalize=False)
-            # dxl15 wrist_roll -> 3 (POSITION)
-            self.bus.write("Operating_Mode", "wrist_roll", 3, normalize=False)
-            # dxl16 gripper -> 5 (CURRENT_POSITION)
-            self.bus.write("Operating_Mode", "gripper", 5, normalize=False)
-
-            # Common raw settings for all joints
+            self.bus.configure_motors()
+            # Use 'extended position mode' for all motors except gripper, because in joint mode the servos
+            # can't rotate more than 360 degrees (from 0 to 4095) And some mistake can happen while assembling
+            # the arm, you could end up with a servo with a position 0 or 4095 at a crucial point
             for motor in self.bus.motors:
-                self.bus.write("Return_Delay_Time", motor, 0, normalize=False)
-                self.bus.write("Drive_Mode", motor, 4, normalize=False)
-                self.bus.write("Position_P_Gain", motor, 1000, normalize=False)
-                self.bus.write("Position_I_Gain", motor, 0, normalize=False)
-                self.bus.write("Position_D_Gain", motor, 1000, normalize=False)
-                self.bus.write("Profile_Velocity", motor, 50, normalize=False)
-                self.bus.write("Profile_Acceleration", motor, 25, normalize=False)
+                if motor != "gripper":
+                    self.bus.write("Operating_Mode", motor, OperatingMode.EXTENDED_POSITION.value)
 
-            # Joint-specific position limits
-            self.bus.write("Min_Position_Limit", "shoulder_lift", 830, normalize=False)
-            self.bus.write("Max_Position_Limit", "shoulder_lift", 3129, normalize=False)
+            # Use 'position control current based' for gripper to be limited by the limit of the current. For
+            # the follower gripper, it means it can grasp an object without forcing too much even tho, its
+            # goal position is a complete grasp (both gripper fingers are ordered to join and reach a touch).
+            # For the leader gripper, it means we can use it as a physical trigger, since we can force with
+            # our finger to make it move, and it will move back to its original target position when we
+            # release the force.
+            self.bus.write("Operating_Mode", "gripper", OperatingMode.CURRENT_POSITION.value)
 
-            self.bus.write("Min_Position_Limit", "elbow_flex", 1024, normalize=False)
-            self.bus.write("Max_Position_Limit", "elbow_flex", 3140, normalize=False)
-
-            self.bus.write("Min_Position_Limit", "wrist_flex", 0, normalize=False)
-            self.bus.write("Max_Position_Limit", "wrist_flex", 4095, normalize=False)
-
-            self.bus.write("Min_Position_Limit", "wrist_roll", 0, normalize=False)
-            self.bus.write("Max_Position_Limit", "wrist_roll", 4095, normalize=False)
-
-            # Gripper current control and shutdown behavior
-            self.bus.write("Current_Limit", "gripper", 600, normalize=False)
-            self.bus.write("Goal_Current", "gripper", 600, normalize=False)
-            self.bus.write("Shutdown", "gripper", 21, normalize=False)
+            # Set better PID values to close the gap between recorded states and actions
+            # TODO(rcadene): Implement an automatic procedure to set optimal PID values for each motor
+            self.bus.write("Position_P_Gain", "elbow_flex", 1500)
+            self.bus.write("Position_I_Gain", "elbow_flex", 0)
+            self.bus.write("Position_D_Gain", "elbow_flex", 600)
 
     def setup_motors(self) -> None:
         for motor in reversed(self.bus.motors):
@@ -260,7 +212,6 @@ class OmxFollower(Robot):
 
         # Send goal position to the arm
         self.bus.sync_write("Goal_Position", goal_pos)
-
         return {f"{motor}.pos": val for motor, val in goal_pos.items()}
 
     def disconnect(self):
