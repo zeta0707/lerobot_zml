@@ -28,7 +28,7 @@ logs
 
 # HPC
 nautilus/*.yaml
-*.key
+#*.key
 
 # Slurm
 sbatch*.sh

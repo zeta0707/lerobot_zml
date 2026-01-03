@@ -127,9 +127,9 @@ class REBEARMFollower(Robot):
     def get_observation(self) -> dict[str, Any]:
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
-        print(
-            "follower->get_observation"
-        )
+        #print(
+        #    "follower->get_observation"
+        #)
         obs_dict = {}
         for motor in self.bus.motors:
             obs_each = self.bus.send("Present_Position", motor=motor, value=None)
@@ -164,15 +164,15 @@ class REBEARMFollower(Robot):
         Returns:
             the action sent to the motors, potentially clipped.
         """
-        print(
-            "follower->send_action"
-        )
+        #print(
+        #    "follower->send_action"
+        #)
         
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
         goal_pos = {key.removesuffix(".pos"): val for key, val in action.items() if key.endswith(".pos")}
-        print('GoalPos:', goal_pos)
+        #print('GoalPos:', goal_pos)
         for  motor, val in goal_pos.items():
             self.bus.send("Goal_Position", motor=motor, value = val)
 
