@@ -68,23 +68,23 @@
     <axis xyz="0 0 0"/>
   </joint>
 
-  <!-- Base Link -->
+  <!-- Base Link, needs offset from word, to motor center -->
   <link name="base_link">
     <collision>
-      <origin rpy="0.0 0.0 0.0" xyz="-0.049 -0.09 0.0"/>
+      <origin rpy="0.0 0.0 0.0" xyz="-0.046 -0.091 0.0"/>
       <geometry>
         <mesh filename="assets/URDF_joint0.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
     <visual>
-      <origin rpy="0.0 0.0 0.0" xyz="-0.049 -0.09 0.0"/>
+      <origin rpy="0.0 0.0 0.0" xyz="-0.046 -0.091 0.0"/>
       <geometry>
         <mesh filename="assets/URDF_joint0.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <inertial>
-      <origin rpy="0.0 0.0 0.0" xyz="-0.049 -0.09 0.0"/>
+      <origin rpy="0.0 0.0 0.0" xyz="-0.046 -0.091 0.0"/>
       <mass value="0.147"/>
       <inertia ixx="0.000114686" ixy="-4.59787e-07" ixz="4.97151e-06" iyy="0.000136117" iyz="9.75275e-08" izz="0.000130364"/>
     </inertial>
