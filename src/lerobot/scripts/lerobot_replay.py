@@ -60,16 +60,11 @@ from lerobot.robots import (  # noqa: F401
     koch_follower,
     make_robot_from_config,
     omx_follower,
-<<<<<<< HEAD
-    so100_follower,
-    so101_follower,
-    rebearm_follower,
-=======
     openarm_follower,
     reachy2,
     so_follower,
+    rebearm_follower,
     unitree_g1,
->>>>>>> upstream/main
 )
 from lerobot.utils.constants import ACTION
 from lerobot.utils.import_utils import register_third_party_plugins

@@ -97,8 +97,8 @@ from lerobot.teleoperators import (  # noqa: F401
     openarm_leader,
     reachy2_teleoperator,
     so_leader,
-    unitree_g1,
     rebearm_leader,
+    unitree_g1,
 )
 from lerobot.utils.import_utils import register_third_party_plugins
 from lerobot.utils.robot_utils import precise_sleep

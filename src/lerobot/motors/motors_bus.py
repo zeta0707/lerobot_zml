@@ -1276,10 +1276,7 @@ class SerialMotorsBus(MotorsBusBase):
             data = self._serialize_data(value, length)
             self.sync_writer.addParam(id_, data)
 
-<<<<<<< HEAD
-    def send(
-        self, data_name: str, motor: str, value: int, *, num_retry: int = 0
-    ) -> dict[str, int]:
+    def send(self, data_name: str, motor: str, value: int, *, num_retry: int = 0) -> dict[str, int]:
         """Send a command to motors.
         """
         if not self.is_connected:
@@ -1298,8 +1295,3 @@ class SerialMotorsBus(MotorsBusBase):
             value = int(value)
             result = self.packet_handler.set_action(self.port_handler, id_, value)     
             return  {self._id_to_name(id_): value}
-=======
-
-# Backward compatibility alias
-MotorsBus: TypeAlias = SerialMotorsBus
->>>>>>> upstream/main

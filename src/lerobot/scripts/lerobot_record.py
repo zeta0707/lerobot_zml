@@ -105,16 +105,11 @@ from lerobot.robots import (  # noqa: F401
     koch_follower,
     make_robot_from_config,
     omx_follower,
-<<<<<<< HEAD
-    so100_follower,
-    so101_follower,
-    rebearm_follower,
-=======
     openarm_follower,
     reachy2,
     so_follower,
+    rebearm_follower,
     unitree_g1 as unitree_g1_robot,
->>>>>>> upstream/main
 )
 from lerobot.teleoperators import (  # noqa: F401
     Teleoperator,
@@ -125,16 +120,11 @@ from lerobot.teleoperators import (  # noqa: F401
     koch_leader,
     make_teleoperator_from_config,
     omx_leader,
-<<<<<<< HEAD
-    so100_leader,
-    so101_leader,
-    rebearm_leader,
-=======
     openarm_leader,
     reachy2_teleoperator,
     so_leader,
+    rebearm_leader,
     unitree_g1,
->>>>>>> upstream/main
 )
 from lerobot.teleoperators.keyboard.teleop_keyboard import KeyboardTeleop
 from lerobot.utils.constants import ACTION, OBS_STR
