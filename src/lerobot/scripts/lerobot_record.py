@@ -118,6 +118,7 @@ from lerobot.processor import (
 from lerobot.robots import (  # noqa: F401
     Robot,
     RobotConfig,
+    bi_omx_follower,
     bi_openarm_follower,
     bi_rebot_b601_follower,
     bi_so_follower,
@@ -128,14 +129,15 @@ from lerobot.robots import (  # noqa: F401
     omx_follower,
     openarm_follower,
     reachy2,
+    rebearm_follower,
     rebot_b601_follower,
     so_follower,
-    rebearm_follower,
     unitree_g1 as unitree_g1_robot,
 )
 from lerobot.teleoperators import (  # noqa: F401
     Teleoperator,
     TeleoperatorConfig,
+    bi_omx_leader,
     bi_openarm_leader,
     bi_openarm_mini,
     bi_rebot_102_leader,
@@ -147,9 +149,9 @@ from lerobot.teleoperators import (  # noqa: F401
     openarm_leader,
     openarm_mini,
     reachy2_teleoperator,
+    rebearm_leader,
     rebot_102_leader,
     so_leader,
-    rebearm_leader,
     unitree_g1,
 )
 from lerobot.teleoperators.keyboard import KeyboardTeleop

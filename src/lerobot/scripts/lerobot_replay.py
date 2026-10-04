@@ -54,6 +54,7 @@ from lerobot.processor import (
 from lerobot.robots import (  # noqa: F401
     Robot,
     RobotConfig,
+    bi_omx_follower,
     bi_openarm_follower,
     bi_rebot_b601_follower,
     bi_so_follower,
@@ -65,9 +66,9 @@ from lerobot.robots import (  # noqa: F401
     omx_follower,
     openarm_follower,
     reachy2,
+    rebearm_follower,
     rebot_b601_follower,
     so_follower,
-    rebearm_follower,
     unitree_g1,
 )
 from lerobot.utils.constants import ACTION
