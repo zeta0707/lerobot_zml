@@ -211,7 +211,7 @@ Record, Replay and Train with Hope-JR is still experimental.
 
 ### Record
 
-This step records the dataset, which can be seen as an example [here](https://huggingface.co/datasets/nepyope/hand_record_test_with_video_data/settings).
+This step records the dataset, which can be seen as an example [here](https://huggingface.co/datasets/nepyope/hand_record_test_with_video_data).
 
 ```bash
 lerobot-record \
@@ -230,7 +230,10 @@ lerobot-record \
     --dataset.episode_time_s=5 \
     --dataset.push_to_hub=true \
     --dataset.private=true \
+    --dataset.streaming_encoding=true \
+    --dataset.encoder_threads=2 \
     --display_data=true
+# Optional: --dataset.rgb_encoder.vcodec=auto
 ```
 
 ### Replay
@@ -273,5 +276,8 @@ lerobot-record \
   --dataset.repo_id=<USER>/eval_hopejr \
   --dataset.single_task="Evaluate hopejr hand policy" \
   --dataset.num_episodes=10 \
+  --dataset.streaming_encoding=true \
+  --dataset.encoder_threads=2 \
   --policy.path=outputs/train/hopejr_hand/checkpoints/last/pretrained_model
+# Optional: --dataset.rgb_encoder.vcodec=auto
 ```

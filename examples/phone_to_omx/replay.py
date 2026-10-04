@@ -27,7 +27,7 @@ from lerobot.robots.omx_follower.config_omx_follower import OmxFollowerConfig
 from lerobot.robots.omx_follower.robot_kinematic_processor import (
     InverseKinematicsEEToJoints,
 )
-from lerobot.robots.so100_follower.so100_follower import OmxFollower
+from lerobot.robots.omx_follower.omx_follower import OmxFollower
 from lerobot.utils.constants import ACTION
 from lerobot.utils.robot_utils import precise_sleep
 from lerobot.utils.utils import log_say

@@ -20,6 +20,7 @@ from enum import Enum
 from pprint import pformat
 
 from lerobot.motors.encoding_utils import decode_sign_magnitude, encode_sign_magnitude
+from lerobot.utils.decorators import check_if_not_connected
 
 from ..motors_bus import Motor, MotorCalibration, MotorsBus, NameOrID, Value, get_address
 
@@ -343,3 +344,19 @@ class LewansoulMotorsBus(MotorsBus):
             model_numbers[id_] = lx16a.LX16A_MODEL_NUM
 
         return model_numbers
+
+    @check_if_not_connected
+    def send(self, data_name: str, motor: str, value: int | None = None, *, num_retry: int = 0) -> dict[str, float | int]:
+        """Read or write a single LX-16A motor using the servo's native position commands.
+
+        Supports "Present_Position" (read, returns the angle as float) and "Goal_Position" (write).
+        """
+        id_ = self.motors[motor].id
+        if data_name == "Present_Position":
+            angle, comm, error = self.packet_handler.get_action(self.port_handler, id_)
+            return {self._id_to_name(id_): float(angle)}
+        elif data_name == "Goal_Position":
+            value = int(value)
+            self.packet_handler.set_action(self.port_handler, id_, value)
+            return {self._id_to_name(id_): value}
+        raise ValueError(f"Unsupported data_name for LX-16A send(): {data_name!r}")
