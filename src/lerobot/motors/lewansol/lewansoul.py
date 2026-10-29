@@ -19,11 +19,17 @@ from copy import deepcopy
 from enum import Enum
 from pprint import pformat
 
-from lerobot.motors.encoding_utils import decode_sign_magnitude, encode_sign_magnitude
 from lerobot.utils.decorators import check_if_not_connected
 
-from ..motors_bus import Motor, MotorCalibration, MotorsBus, NameOrID, Value, get_address
-
+from .legacy_motors_bus import (
+    Motor,
+    MotorCalibration,
+    MotorsBus,
+    NameOrID,
+    Value,
+    decode_sign_magnitude,
+    encode_sign_magnitude,
+)
 from .tables import (
     AVAILABLE_BAUDRATES,
     MODEL_BAUDRATE_TABLE,
@@ -83,13 +89,12 @@ def _split_into_byte_chunks(value: int, length: int) -> list[int]:
     return data
 
 
-
 class LewansoulMotorsBus(MotorsBus):
     """
     The Lewansoul implementation for a MotorsBus. It relies on the python Lewansoul sdk to communicate with
     the motors. For more info, see the Lewansoul SDK Documentation:
-     """
-    
+    """
+
     apply_drive_mode = True
     available_baudrates = deepcopy(AVAILABLE_BAUDRATES)
     default_baudrate = DEFAULT_BAUDRATE
@@ -146,7 +151,7 @@ class LewansoulMotorsBus(MotorsBus):
         expected_model_nb = self.model_number_table[model]
 
         for baudrate in search_baudrates:
-            #self.set_baudrate(baudrate)
+            # self.set_baudrate(baudrate)
             id_model = self.broadcast_ping()
             if id_model:
                 found_id, found_model = next(iter(id_model.items()))
@@ -162,9 +167,8 @@ class LewansoulMotorsBus(MotorsBus):
 
         raise RuntimeError(f"Motor '{motor}' (model '{model}') was not found. Make sure it is connected.")
 
-
     def configure_motors(self) -> None:
-        #nothing to configure, use default
+        # nothing to configure, use default
         pass
 
     @property
@@ -209,19 +213,19 @@ class LewansoulMotorsBus(MotorsBus):
         return half_turn_homings
 
     def disable_torque(self, motors: str | list[str] | None = None, num_retry: int = 0) -> None:
-        ids = [1,2,3,4,5,6]
+        ids = [1, 2, 3, 4, 5, 6]
         for _id in ids:
-            txpacket= [_id, 4, 31, 0]
+            txpacket = [_id, 4, 31, 0]
             self.packet_handler.txPacket(self.port_handler, txpacket)
-        
+
     def _disable_torque(self, motor_id: int, model: str, num_retry: int = 0) -> None:
-        txpacket= [motor_id, 4, 31, 0]
+        txpacket = [motor_id, 4, 31, 0]
         self.packet_handler.txPacket(self.port_handler, txpacket)
 
     def enable_torque(self, motors: str | list[str] | None = None, num_retry: int = 0) -> None:
-        ids = [1,2,3,4,5,6]
+        ids = [1, 2, 3, 4, 5, 6]
         for _id in ids:
-            txpacket= [_id, 4, 31,1]
+            txpacket = [_id, 4, 31, 1]
             self.packet_handler.txPacket(self.port_handler, txpacket)
 
     def _encode_sign(self, data_name: str, ids_values: dict[int, int]) -> dict[int, int]:
@@ -251,7 +255,7 @@ class LewansoulMotorsBus(MotorsBus):
         import lx16aservo_sdk as lx16a
 
         data_list = {}
-        #ping result expected length, [85, 85, 1, 4, 14, 1, 235]
+        # ping result expected length, [85, 85, 1, 4, 14, 1, 235]
         status_length = 7
 
         rx_length = 0
@@ -259,7 +263,7 @@ class LewansoulMotorsBus(MotorsBus):
 
         tx_time_per_byte = (1000.0 / self.port_handler.getBaudRate()) * 10.0
 
-        txpacket= [254, 3, 14]
+        txpacket = [254, 3, 14]
 
         result = self.packet_handler.txPacket(self.port_handler, txpacket)
         if result != lx16a.COMM_SUCCESS:
@@ -267,7 +271,9 @@ class LewansoulMotorsBus(MotorsBus):
             return data_list, result
 
         # set rx timeout
-        self.port_handler.setPacketTimeoutMillis((wait_length * tx_time_per_byte) + (3.0 * lx16a.MAX_ID) + 16.0)
+        self.port_handler.setPacketTimeoutMillis(
+            (wait_length * tx_time_per_byte) + (3.0 * lx16a.MAX_ID) + 16.0
+        )
 
         rxpacket = []
         while not self.port_handler.isPacketTimeout() and rx_length < wait_length:
@@ -335,7 +341,7 @@ class LewansoulMotorsBus(MotorsBus):
             logger.error(f"Some motors found returned an error status:\n{pformat(display_dict, indent=4)}")
 
         return self._read_model_number(list(ids_status), raise_on_error)
-    
+
     def _read_model_number(self, motor_ids: list[int], raise_on_error: bool = False) -> dict[int, int]:
         import lx16aservo_sdk as lx16a
 
@@ -346,7 +352,9 @@ class LewansoulMotorsBus(MotorsBus):
         return model_numbers
 
     @check_if_not_connected
-    def send(self, data_name: str, motor: str, value: int | None = None, *, num_retry: int = 0) -> dict[str, float | int]:
+    def send(
+        self, data_name: str, motor: str, value: int | None = None, *, num_retry: int = 0
+    ) -> dict[str, float | int]:
         """Read or write a single LX-16A motor using the servo's native position commands.
 
         Supports "Present_Position" (read, returns the angle as float) and "Goal_Position" (write).
