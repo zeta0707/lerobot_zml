@@ -56,6 +56,7 @@ from .compute_stats import (
     compute_relative_action_stats,
 )
 from .dataset_metadata import LeRobotDatasetMetadata
+from .dataset_reader import DatasetReader
 from .image_writer import write_image
 from .io_utils import (
     get_parquet_file_size_in_mb,
@@ -676,7 +677,7 @@ def _keep_episodes_from_video_with_av(
 
     v_in = in_container.streams.video[0]
 
-    out = av.open(str(output_path), mode="w")
+    out = av.open(str(output_path), mode="w", options={"movflags": "faststart"})
 
     # Convert fps to Fraction for PyAV compatibility.
     fps_fraction = Fraction(fps).limit_denominator(1000)
@@ -1607,6 +1608,9 @@ def modify_tasks(
     # Reload metadata to reflect changes
     dataset.meta.tasks = new_task_df
     dataset.meta.episodes = load_episodes(root)
+    # A dataset opened from disk already holds its frames in memory: reload them for the new task_index.
+    if isinstance(dataset.reader, DatasetReader) and dataset.reader.hf_dataset is not None:
+        dataset.reader.load_and_activate()
 
     logger.info(f"Tasks: {unique_tasks}")
 

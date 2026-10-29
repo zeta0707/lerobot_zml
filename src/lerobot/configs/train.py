@@ -14,6 +14,7 @@
 import builtins
 import datetime as dt
 import json
+import logging
 import multiprocessing
 import os
 import tempfile
@@ -142,7 +143,7 @@ class TrainPipelineConfig(HubMixin):
     steps: int = 100_000
     # Run policy in the simulation environment every N steps to measure reward/success (0 = disabled).
     env_eval_freq: int = 20_000
-    log_freq: int = 200
+    log_freq: int = 200  # 0 or negative disables periodic logging
     # Compute eval loss on held-out episodes every N steps (0 = disabled). Requires eval_split > 0.
     eval_steps: int = 0
     # Cap on total eval samples, split uniformly across tasks (0 = use all held-out data).
@@ -220,7 +221,7 @@ class TrainPipelineConfig(HubMixin):
             self._resolve_resume_checkpoint()
 
     def _resolve_resume_checkpoint(self) -> None:
-        """Point the trainable config at the checkpoint named by `--config_path`.
+        """Resolve the checkpoint named by `--config_path` into `checkpoint_path`.
 
         `config_path` is either a local path (to a checkpoint's train_config.json or its
         pretrained_model/ dir) or a Hub repo id. For a Hub repo, the latest checkpoint is downloaded
@@ -256,12 +257,8 @@ class TrainPipelineConfig(HubMixin):
                 now = dt.datetime.now()
                 self.output_dir = Path("outputs/train") / f"{now:%Y-%m-%d}/{now:%H-%M-%S}_resume"
             self.checkpoint_path = resolve_resume_checkpoint(config_path, self.output_dir)
-            policy_dir = self.checkpoint_path / PRETRAINED_MODEL_DIR
-
-        if self.policy is not None:
-            self.policy.pretrained_path = policy_dir
-        if self.reward_model is not None:
-            self.reward_model.pretrained_path = str(policy_dir)
+        # `pretrained_path` keeps naming the model the run started from (the model card's
+        # `base_model`); the resumed weights and processors load from `checkpoint_path`.
 
     def validate(self) -> None:
         available_contexts = multiprocessing.get_all_start_methods()
@@ -284,7 +281,23 @@ class TrainPipelineConfig(HubMixin):
             )
 
         active_cfg = self.trainable_config
-        if self.rename_map and active_cfg.pretrained_path is None:
+
+        # `--peft.*` and `--policy.use_peft=true` both request PEFT training: normalize them so that
+        # `make_policy` and the training loop see the same thing.
+        if self.policy is not None and (self.peft is not None or self.policy.use_peft):
+            if self.policy.pretrained_path is None and not self.resume:
+                raise ValueError(
+                    "Training from scratch using PEFT is unlikely to yield good results. "
+                    "Supply a `--policy.path` to fine-tune an existing model."
+                )
+            self.policy.use_peft = True
+            if self.peft is None:
+                logging.info(
+                    "`policy.use_peft=true` without `--peft.*` options: using the default PEFT config."
+                )
+                self.peft = PeftConfig()
+
+        if self.rename_map and active_cfg.pretrained_path is None and not self.resume:
             raise ValueError(
                 "`rename_map` requires a pretrained policy checkpoint. "
                 "Fresh initialization derives feature names from the current dataset, so no rename is applied."
@@ -314,6 +327,13 @@ class TrainPipelineConfig(HubMixin):
         elif self.use_policy_training_preset and not self.resume:
             self.optimizer = active_cfg.get_optimizer_preset()
             self.scheduler = active_cfg.get_scheduler_preset()
+
+        image_transforms = self.dataset.image_transforms
+        if image_transforms.enable and image_transforms.backend == "gpu" and active_cfg.device == "cpu":
+            raise ValueError(
+                "dataset.image_transforms.backend='gpu' needs an accelerator device, but policy.device is 'cpu'. "
+                "Use image_transforms.backend='dataloader' to augment in the DataLoader workers."
+            )
 
         if self.eval_steps > 0 and self.dataset.eval_split == 0.0:
             raise ValueError("eval_steps > 0 requires dataset.eval_split > 0.0 to hold out eval data.")

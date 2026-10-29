@@ -14,6 +14,7 @@ from lerobot.processor import (
     PolicyProcessorPipeline,
     RelativeActionsProcessorStep,
 )
+from lerobot.transforms import ImageTransformsConfig
 
 
 def test_language_rollout_loads_checkpoint_processors_even_when_dataset_stats_are_present(monkeypatch):
@@ -85,7 +86,10 @@ def _run_training_until_processors(monkeypatch, cfg, stats, *, main_process=Fals
     cfg.cudnn_deterministic = False
     cfg.checkpoint_format = SimpleNamespace(wants_dcp=False)
     cfg.peft = None
-    accelerator = SimpleNamespace(num_processes=1, device=torch.device("cpu"), wait_for_everyone=lambda: None)
+    cfg.dataset = SimpleNamespace(image_transforms=ImageTransformsConfig())
+    accelerator = SimpleNamespace(
+        num_processes=1, process_index=0, device=torch.device("cpu"), wait_for_everyone=lambda: None
+    )
     monkeypatch.setattr(trainer, "make_accelerator", lambda _: accelerator)
     monkeypatch.setattr(trainer.ParallelDims, "from_config", lambda *args: None)
     monkeypatch.setattr(trainer, "init_logging", lambda **kwargs: None)
@@ -117,6 +121,7 @@ def _run_training_until_processors(monkeypatch, cfg, stats, *, main_process=Fals
     return pipelines
 
 
+@pytest.mark.dataset
 @pytest.mark.parametrize("recipe_mode", ["absent", "disabled", "builtin", "yaml"])
 @pytest.mark.parametrize("main_process", [False, True])
 @pytest.mark.parametrize("resume", [False, True])
@@ -125,9 +130,10 @@ def test_training_entrypoint_only_rebuilds_for_language_finetuning(
 ):
     config = _act_config()
     pre, post = factory.make_pre_post_processors(config, dataset_stats=_stats(10.0))
-    pre.save_pretrained(tmp_path)
-    post.save_pretrained(tmp_path)
-    config.pretrained_path = str(tmp_path)
+    checkpoint_dir = tmp_path / "pretrained_model"
+    pre.save_pretrained(checkpoint_dir)
+    post.save_pretrained(checkpoint_dir)
+    config.pretrained_path = str(checkpoint_dir)
     from lerobot.datasets.recipe import MessageTurn, TrainingRecipe, resolve_recipe_override
 
     recipe = TrainingRecipe(messages=[MessageTurn(role="user", content="${task}", stream="low_level")])
@@ -138,7 +144,12 @@ def test_training_entrypoint_only_rebuilds_for_language_finetuning(
     elif recipe_mode != "absent":
         config.recipe = recipe if recipe_mode == "builtin" else None
     cfg = SimpleNamespace(
-        trainable_config=config, policy=config, resume=resume, rename_map={}, is_reward_model_training=False
+        trainable_config=config,
+        policy=config,
+        resume=resume,
+        checkpoint_path=tmp_path if resume else None,
+        rename_map={},
+        is_reward_model_training=False,
     )
     load = MagicMock(wraps=factory.PolicyProcessorPipeline.from_pretrained)
     monkeypatch.setattr(factory.PolicyProcessorPipeline, "from_pretrained", load)
@@ -156,6 +167,7 @@ def test_training_entrypoint_only_rebuilds_for_language_finetuning(
     torch.testing.assert_close(post(torch.tensor([[1.0]])), torch.tensor([[12.0 if resume else 22.0]]))
 
 
+@pytest.mark.dataset
 @pytest.mark.parametrize("for_training", [False, True])
 def test_checkpoint_renderer_uses_saved_recipe_and_stats(tmp_path, for_training, dataset_dependencies):
     from lerobot.datasets.recipe import MessageTurn, TrainingRecipe
@@ -196,6 +208,7 @@ def test_checkpoint_renderer_uses_saved_recipe_and_stats(tmp_path, for_training,
         assert "target_message_indices" not in result
 
 
+@pytest.mark.dataset
 def test_finetuning_preserves_statistics_adapted_by_policy_factory(monkeypatch, training_dependencies):
     from lerobot.policies.act import processor_act
 
@@ -213,7 +226,12 @@ def test_finetuning_preserves_statistics_adapted_by_policy_factory(monkeypatch, 
 
     config.recipe = TrainingRecipe(messages=[MessageTurn(role="user", content="${task}", stream="low_level")])
     cfg = SimpleNamespace(
-        trainable_config=config, policy=config, resume=False, rename_map={}, is_reward_model_training=False
+        trainable_config=config,
+        policy=config,
+        resume=False,
+        checkpoint_path=None,
+        rename_map={},
+        is_reward_model_training=False,
     )
     pre, post = _run_training_until_processors(monkeypatch, cfg, _stats(20.0))
     torch.testing.assert_close(
@@ -236,6 +254,7 @@ def test_pipeline_without_recipe_preserves_training_inputs_and_renders_vqa():
     ]
 
 
+@pytest.mark.dataset
 def test_fresh_training_preserves_relative_action_links_and_batch_renaming(
     monkeypatch, caplog, training_dependencies
 ):
@@ -262,6 +281,7 @@ def test_fresh_training_preserves_relative_action_links_and_batch_renaming(
         trainable_config=config,
         policy=config,
         resume=False,
+        checkpoint_path=None,
         rename_map={"observation.old_state": "observation.state"},
         is_reward_model_training=False,
     )
